@@ -1,29 +1,999 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Campus Placement Portal</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PlaceMe – Campus Placement Portal</title>
+    <meta name="description"
+        content="The all-in-one campus placement portal connecting students, recruiters, and placement officers for seamless hiring." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-        href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Instrument+Sans:wght@400;500;600&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
-    <header class="nav" id="nav"></header>
-    <main id="app"></main>
 
-    <div class="modal" id="modal" hidden>
-        <div class="modal-card" role="dialog" aria-modal="true" id="modal-body"></div>
+    <!-- ═══════════════════════ LOADING SCREEN ═══════════════════════ -->
+    <div id="loading-screen">
+        <div class="loader-logo">
+            <div class="loader-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                    <path d="M24 4L44 36H4L24 4Z" fill="url(#lg1)" />
+                    <defs>
+                        <linearGradient id="lg1" x1="4" y1="36" x2="44" y2="4" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#6366f1" />
+                            <stop offset="1" stop-color="#a855f7" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <span>PlaceMe</span>
+        </div>
+        <div class="loader-bar">
+            <div class="loader-fill"></div>
+        </div>
     </div>
-    <div class="toasts" id="toasts" aria-live="polite"></div>
 
-    <!-- local-backend.js = demo mode without n8n. Set CONFIG.N8N_URL in app.js to use n8n. -->
-    <script src="local-backend.js"></script>
+    <!-- ═══════════════════════ AUTH MODAL ═══════════════════════ -->
+    <div id="auth-overlay" class="hidden">
+        <div id="auth-modal">
+            <button id="auth-close" class="modal-close-btn" onclick="closeAuth()">✕</button>
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+                        <path d="M24 4L44 36H4L24 4Z" fill="url(#lg2)" />
+                        <defs>
+                            <linearGradient id="lg2" x1="4" y1="36" x2="44" y2="4" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#6366f1" />
+                                <stop offset="1" stop-color="#a855f7" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    PlaceMe
+                </div>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Sign In</button>
+                <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="login-email" placeholder="you@college.edu" required />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="password-wrap">
+                        <input type="password" id="login-password" placeholder="••••••••" required />
+                        <button type="button" class="eye-btn" onclick="togglePassword('login-password')">👁</button>
+                    </div>
+                </div>
+                <div class="form-row-between">
+                    <label class="checkbox-label"><input type="checkbox" id="remember-me" /> Remember me</label>
+                    <a href="#" class="forgot-link" onclick="showForgotPassword()">Forgot password?</a>
+                </div>
+                <button type="submit" class="btn-primary btn-full" id="login-btn">
+                    <span>Sign In</span>
+                    <div class="btn-loader hidden"></div>
+                </button>
+                <div id="login-error" class="form-error hidden"></div>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form hidden" onsubmit="handleRegister(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" id="reg-firstname" placeholder="John" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" id="reg-lastname" placeholder="Doe" required />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="reg-role" onchange="toggleRegisterFields()" required>
+                        <option value="">Select your role</option>
+                        <option value="student">Student</option>
+                        <option value="company">Company Recruiter</option>
+                        <option value="admin">Placement Officer (Admin)</option>
+                    </select>
+                </div>
+                <div id="student-extra-fields">
+                    <div class="form-group">
+                        <label>Roll Number</label>
+                        <input type="text" id="reg-roll" placeholder="2021CS001" />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Branch / Department</label>
+                            <select id="reg-branch">
+                                <option value="">Select branch</option>
+                                <option value="CSE">Computer Science</option>
+                                <option value="ECE">Electronics</option>
+                                <option value="ME">Mechanical</option>
+                                <option value="CE">Civil</option>
+                                <option value="EE">Electrical</option>
+                                <option value="IT">Information Technology</option>
+                                <option value="MBA">MBA</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Graduation Year</label>
+                            <select id="reg-year">
+                                <option value="">Select year</option>
+                                <option value="2024">2024</option>
+                                <option value="2025">2025</option>
+                                <option value="2026">2026</option>
+                                <option value="2027">2027</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div id="company-extra-fields" class="hidden">
+                    <div class="form-group">
+                        <label>Company Name</label>
+                        <input type="text" id="reg-company" placeholder="Acme Corp" />
+                    </div>
+                    <div class="form-group">
+                        <label>Designation</label>
+                        <input type="text" id="reg-designation" placeholder="HR Manager" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="reg-email" placeholder="you@college.edu" required />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="password-wrap">
+                        <input type="password" id="reg-password" placeholder="Min. 8 characters" required
+                            minlength="8" />
+                        <button type="button" class="eye-btn" onclick="togglePassword('reg-password')">👁</button>
+                    </div>
+                    <div class="password-strength" id="pw-strength"></div>
+                </div>
+                <button type="submit" class="btn-primary btn-full" id="register-btn">
+                    <span>Create Account</span>
+                    <div class="btn-loader hidden"></div>
+                </button>
+                <div id="register-error" class="form-error hidden"></div>
+                <div id="register-success" class="form-success hidden"></div>
+            </form>
+
+            <!-- Social Auth -->
+            <div class="auth-divider"><span>or continue with</span></div>
+            <button class="btn-social" onclick="handleGoogleAuth()">
+                <svg width="18" height="18" viewBox="0 0 18 18">
+                    <path fill="#4285F4"
+                        d="M17.64 9.2a10 10 0 0 0-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9a8.78 8.78 0 0 0 2.7-6.62z" />
+                    <path fill="#34A853"
+                        d="M9 18a8.59 8.59 0 0 0 5.96-2.18l-2.9-2.26a5.43 5.43 0 0 1-8.07-2.85H.98v2.33A9 9 0 0 0 9 18z" />
+                    <path fill="#FBBC05" d="M3.99 10.71a5.54 5.54 0 0 1 0-3.42V4.96H.98a9 9 0 0 0 0 8.08z" />
+                    <path fill="#EA4335"
+                        d="M9 3.58a4.86 4.86 0 0 1 3.44 1.35l2.58-2.58A8.64 8.64 0 0 0 9 0a9 9 0 0 0-8.02 4.96l3.01 2.33A5.36 5.36 0 0 1 9 3.58z" />
+                </svg>
+                Continue with Google
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════ TOAST NOTIFICATION ═══════════════════════ -->
+    <div id="toast-container"></div>
+
+    <!-- ═══════════════════════ NAVBAR ═══════════════════════ -->
+    <nav id="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo" onclick="showPage('home')">
+                <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
+                    <path d="M24 4L44 36H4L24 4Z" fill="url(#lg3)" />
+                    <defs>
+                        <linearGradient id="lg3" x1="4" y1="36" x2="44" y2="4" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#6366f1" />
+                            <stop offset="1" stop-color="#a855f7" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                PlaceMe
+            </a>
+
+            <div class="nav-links" id="nav-links">
+                <a href="#" class="nav-link active" id="nav-home" onclick="showPage('home')">Home</a>
+                <a href="#" class="nav-link" id="nav-jobs" onclick="showPage('jobs')">Jobs</a>
+                <a href="#" class="nav-link" id="nav-companies" onclick="showPage('companies')">Companies</a>
+                <a href="#" class="nav-link" id="nav-notices" onclick="showPage('notices')">Notices</a>
+                <a href="#" class="nav-link" id="nav-stats" onclick="showPage('stats')">Statistics</a>
+            </div>
+
+            <div class="nav-actions">
+                <!-- Guest buttons -->
+                <div id="guest-nav" class="nav-auth-btns">
+                    <button class="btn-ghost" onclick="openAuth('login')">Sign In</button>
+                    <button class="btn-primary" onclick="openAuth('register')">Get Started</button>
+                </div>
+                <!-- Logged-in user -->
+                <div id="user-nav" class="hidden">
+                    <div class="user-avatar-btn" id="user-avatar-btn" onclick="toggleUserMenu()">
+                        <div class="user-avatar" id="nav-avatar">U</div>
+                        <span id="nav-username">User</span>
+                        <svg class="chevron" width="12" height="12" viewBox="0 0 12 12">
+                            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"
+                                stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <div class="user-menu hidden" id="user-menu">
+                        <a href="#" onclick="showPage('dashboard')">📊 Dashboard</a>
+                        <a href="#" onclick="showPage('profile')">👤 My Profile</a>
+                        <a href="#" id="admin-menu-link" onclick="showPage('admin')" class="hidden">⚙️ Admin Panel</a>
+                        <a href="#" id="post-job-menu-link" onclick="showPage('post-job')" class="hidden">➕ Post a
+                            Job</a>
+                        <hr />
+                        <a href="#" onclick="handleLogout()" class="logout-link">🚪 Sign Out</a>
+                    </div>
+                </div>
+                <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════════════════════════════════════════
+     PAGE: HOME / LANDING
+═══════════════════════════════════════════════════════ -->
+    <div id="page-home" class="page active">
+
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-bg-shapes">
+                <div class="shape shape-1"></div>
+                <div class="shape shape-2"></div>
+                <div class="shape shape-3"></div>
+            </div>
+            <div class="hero-content">
+                <div class="hero-badge">🎓 Campus Placement 2025-26</div>
+                <h1 class="hero-title">
+                    Your Dream Career<br />
+                    <span class="gradient-text">Starts Right Here</span>
+                </h1>
+                <p class="hero-subtitle">Connect with 200+ companies, track applications in real-time, and land your
+                    first job — all from one unified campus placement platform.</p>
+                <div class="hero-cta">
+                    <button class="btn-primary btn-lg" onclick="openAuth('register')">
+                        Get Started Free
+                        <svg width="16" height="16" viewBox="0 0 16 16">
+                            <path d="M8 0l8 8-8 8M0 8h16" stroke="currentColor" stroke-width="1.5" fill="none"
+                                stroke-linecap="round" />
+                        </svg>
+                    </button>
+                    <button class="btn-ghost btn-lg" onclick="showPage('jobs')">Browse Jobs</button>
+                </div>
+                <div class="hero-stats">
+                    <div class="hero-stat"><span class="stat-num" data-target="1200">0</span><span
+                            class="stat-label">Students Placed</span></div>
+                    <div class="hero-stat-divider"></div>
+                    <div class="hero-stat"><span class="stat-num" data-target="200">0</span><span
+                            class="stat-label">Companies</span></div>
+                    <div class="hero-stat-divider"></div>
+                    <div class="hero-stat"><span class="stat-num" data-target="45">0</span><span class="stat-label">LPA
+                            Highest</span></div>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="dashboard-preview">
+                    <div class="preview-header">
+                        <div class="preview-dots"><span></span><span></span><span></span></div>
+                        <span class="preview-title">Placement Dashboard</span>
+                    </div>
+                    <div class="preview-stats-row">
+                        <div class="preview-stat-card purple">
+                            <div class="psc-icon">💼</div>
+                            <div>
+                                <div class="psc-num">342</div>
+                                <div class="psc-label">Active Jobs</div>
+                            </div>
+                        </div>
+                        <div class="preview-stat-card blue">
+                            <div class="psc-icon">📨</div>
+                            <div>
+                                <div class="psc-num">87</div>
+                                <div class="psc-label">Applications</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="preview-company-list">
+                        <div class="preview-company"><img src="https://logo.clearbit.com/google.com"
+                                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22><rect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%236366f1%22/><text x=%2250%25%22 y=%2255%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22>G</text></svg>'"
+                                alt="Google" />
+                            <div>
+                                <div class="pc-name">Google</div>
+                                <div class="pc-role">SDE Intern</div>
+                            </div><span class="pc-badge">Open</span>
+                        </div>
+                        <div class="preview-company"><img src="https://logo.clearbit.com/microsoft.com"
+                                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22><rect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%230078D4%22/><text x=%2250%25%22 y=%2255%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22>M</text></svg>'"
+                                alt="Microsoft" />
+                            <div>
+                                <div class="pc-name">Microsoft</div>
+                                <div class="pc-role">Software Engineer</div>
+                            </div><span class="pc-badge">Open</span>
+                        </div>
+                        <div class="preview-company"><img src="https://logo.clearbit.com/amazon.com"
+                                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22><rect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%23FF9900%22/><text x=%2250%25%22 y=%2255%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2214%22>A</text></svg>'"
+                                alt="Amazon" />
+                            <div>
+                                <div class="pc-name">Amazon</div>
+                                <div class="pc-role">SDE-1</div>
+                            </div><span class="pc-badge applied">Applied</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features-section">
+            <div class="section-container">
+                <div class="section-header">
+                    <div class="section-badge">Why PlaceMe?</div>
+                    <h2 class="section-title">Everything you need to get placed</h2>
+                    <p class="section-sub">A complete ecosystem for students, recruiters, and placement officers</p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon purple">🎯</div>
+                        <h3>Smart Job Matching</h3>
+                        <p>AI-powered job recommendations based on your skills, CGPA, and branch eligibility criteria
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon blue">📊</div>
+                        <h3>Real-time Analytics</h3>
+                        <p>Track placement statistics, company trends, and package insights with interactive dashboards
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon green">📅</div>
+                        <h3>Interview Scheduling</h3>
+                        <p>Seamlessly manage interview rounds, slot booking, and result announcements</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon orange">📢</div>
+                        <h3>Notice Board</h3>
+                        <p>Stay updated with placement drives, deadlines, pre-placement talks, and important
+                            announcements</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon pink">📄</div>
+                        <h3>Resume Management</h3>
+                        <p>Upload, manage and share your resume directly with companies via the portal</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon cyan">🏢</div>
+                        <h3>Company Portal</h3>
+                        <p>Dedicated recruiter dashboard to post jobs, review applications, and schedule interviews</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Companies Marquee -->
+        <section class="companies-marquee-section">
+            <div class="section-container">
+                <p class="marquee-label">Trusted by leading companies</p>
+            </div>
+            <div class="marquee-track">
+                <div class="marquee-content" id="marquee-content">
+                    <span class="marquee-company">Google</span>
+                    <span class="marquee-company">Microsoft</span>
+                    <span class="marquee-company">Amazon</span>
+                    <span class="marquee-company">Meta</span>
+                    <span class="marquee-company">Apple</span>
+                    <span class="marquee-company">Netflix</span>
+                    <span class="marquee-company">Infosys</span>
+                    <span class="marquee-company">TCS</span>
+                    <span class="marquee-company">Wipro</span>
+                    <span class="marquee-company">Deloitte</span>
+                    <span class="marquee-company">IBM</span>
+                    <span class="marquee-company">Accenture</span>
+                    <span class="marquee-company">Oracle</span>
+                    <span class="marquee-company">Adobe</span>
+                    <span class="marquee-company">Goldman Sachs</span>
+                    <span class="marquee-company">Google</span>
+                    <span class="marquee-company">Microsoft</span>
+                    <span class="marquee-company">Amazon</span>
+                    <span class="marquee-company">Meta</span>
+                    <span class="marquee-company">Apple</span>
+                    <span class="marquee-company">Netflix</span>
+                    <span class="marquee-company">Infosys</span>
+                    <span class="marquee-company">TCS</span>
+                    <span class="marquee-company">Wipro</span>
+                    <span class="marquee-company">Deloitte</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <div class="cta-container">
+                <div class="cta-glow"></div>
+                <h2>Ready to start your placement journey?</h2>
+                <p>Join thousands of students who found their dream jobs through PlaceMe</p>
+                <div class="cta-btns">
+                    <button class="btn-primary btn-lg" onclick="openAuth('register')">Register as Student</button>
+                    <button class="btn-outline btn-lg" onclick="openAuth('register')">Post a Job</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-container">
+                <div class="footer-brand">
+                    <div class="nav-logo">
+                        <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
+                            <path d="M24 4L44 36H4L24 4Z" fill="url(#lgf)" />
+                            <defs>
+                                <linearGradient id="lgf" x1="4" y1="36" x2="44" y2="4" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#6366f1" />
+                                    <stop offset="1" stop-color="#a855f7" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        PlaceMe
+                    </div>
+                    <p>Your campus placement partner for a brighter future.</p>
+                </div>
+                <div class="footer-links">
+                    <div>
+                        <h4>Platform</h4><a href="#">About</a><a href="#">Features</a><a href="#">Pricing</a>
+                    </div>
+                    <div>
+                        <h4>For Students</h4><a href="#" onclick="showPage('jobs')">Browse Jobs</a><a href="#"
+                            onclick="openAuth('register')">Create Profile</a>
+                    </div>
+                    <div>
+                        <h4>For Recruiters</h4><a href="#" onclick="openAuth('register')">Post Jobs</a><a
+                            href="#">Contact Us</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2025 PlaceMe. All rights reserved. Built with ❤️ for students.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+     PAGE: JOBS
+═══════════════════════════════════════════════════════ -->
+    <div id="page-jobs" class="page hidden">
+        <div class="page-header-section">
+            <div class="section-container">
+                <h1 class="page-title">Job Listings</h1>
+                <p class="page-sub">Discover and apply to the latest placement opportunities</p>
+            </div>
+        </div>
+        <div class="section-container jobs-layout">
+            <!-- Filters Sidebar -->
+            <aside class="jobs-filters">
+                <div class="filter-card">
+                    <h3>Filters</h3>
+                    <div class="filter-group">
+                        <label>Search</label>
+                        <div class="search-input-wrap">
+                            <svg width="16" height="16" viewBox="0 0 16 16">
+                                <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" fill="none" />
+                                <line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" />
+                            </svg>
+                            <input type="text" id="job-search" placeholder="Role, company..." oninput="filterJobs()" />
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Job Type</label>
+                        <select id="filter-type" onchange="filterJobs()">
+                            <option value="">All Types</option>
+                            <option value="Full-time">Full-time</option>
+                            <option value="Internship">Internship</option>
+                            <option value="PPO">PPO</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Branch Eligible</label>
+                        <select id="filter-branch" onchange="filterJobs()">
+                            <option value="">All Branches</option>
+                            <option value="CSE">CSE</option>
+                            <option value="ECE">ECE</option>
+                            <option value="ME">ME</option>
+                            <option value="CE">CE</option>
+                            <option value="EE">EE</option>
+                            <option value="IT">IT</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Min. CGPA</label>
+                        <input type="number" id="filter-cgpa" step="0.1" min="0" max="10" placeholder="e.g. 7.5"
+                            oninput="filterJobs()" />
+                    </div>
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <select id="filter-status" onchange="filterJobs()">
+                            <option value="">All</option>
+                            <option value="open">Open</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
+                    <button class="btn-ghost btn-full" onclick="clearJobFilters()">Clear Filters</button>
+                </div>
+            </aside>
+
+            <!-- Jobs List -->
+            <main class="jobs-main">
+                <div class="jobs-toolbar">
+                    <span id="jobs-count">Loading jobs...</span>
+                    <select id="jobs-sort" onchange="filterJobs()">
+                        <option value="newest">Newest First</option>
+                        <option value="package">Highest Package</option>
+                        <option value="deadline">Deadline Soon</option>
+                    </select>
+                </div>
+                <div id="jobs-list" class="jobs-grid">
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+     PAGE: JOB DETAIL (modal-style page)
+═══════════════════════════════════════════════════════ -->
+    <div id="page-job-detail" class="page hidden">
+        <div class="section-container">
+            <button class="back-btn" onclick="showPage('jobs')">← Back to Jobs</button>
+            <div id="job-detail-content" class="job-detail-layout">
+                <!-- populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+     PAGE: COMPANIES
+═══════════════════════════════════════════════════════ -->
+    <div id="page-companies" class="page hidden">
+        <div class="page-header-section">
+            <div class="section-container">
+                <h1 class="page-title">Companies</h1>
+                <p class="page-sub">Explore companies visiting our campus for placements</p>
+            </div>
+        </div>
+        <div class="section-container">
+            <div class="companies-search-bar">
+                <div class="search-input-wrap">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" fill="none" />
+                        <line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                    <input type="text" id="company-search" placeholder="Search companies..."
+                        oninput="filterCompanies()" />
+                </div>
+                <select id="company-industry" onchange="filterCompanies()">
+                    <option value="">All Industries</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Consulting">Consulting</option>
+                    <option value="Manufacturing">Manufacturing</option>
+                    <option value="Healthcare">Healthcare</option>
+                </select>
+            </div>
+            <div id="companies-grid" class="companies-grid">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+     PAGE: NOTICES
+═══════════════════════════════════════════════════════ -->
+    <div id="page-notices" class="page hidden">
+        <div class="page-header-section">
+            <div class="section-container">
+                <h1 class="page-title">Notice Board</h1>
+                <p class="page-sub">Important announcements, deadlines, and placement updates</p>
+            </div>
+        </div>
+        <div class="section-container notices-layout">
+            <div class="notices-filters">
+                <button class="notice-filter-btn active" data-filter="all"
+                    onclick="filterNotices('all', this)">All</button>
+                <button class="notice-filter-btn" data-filter="urgent" onclick="filterNotices('urgent', this)">🚨
+                    Urgent</button>
+                <button class="notice-filter-btn" data-filter="drive" onclick="filterNotices('drive', this)">🏢
+                    Drives</button>
+                <button class="notice-filter-btn" data-filter="result" onclick="filterNotices('result', this)">🏆
+                    Results</button>
+                <button class="notice-filter-btn" data-filter="general" onclick="filterNotices('general', this)">📢
+                    General</button>
+            </div>
+            <div id="notices-list" class="notices-list">
+                <div class="skeleton-card tall"></div>
+                <div class="skeleton-card tall"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+     PAGE: STATISTICS
+═══════════════════════════════════════════════════════ -->
+    <div id="page-stats" class="page hidden">
+        <div class="page-header-section">
+            <div class="section-container">
+                <h1 class="page-title">Placement Statistics</h1>
+                <p class="page-sub">Comprehensive analytics and placement trends</p>
+            </div>
+        </div>
+        <div class="section-container">
+            <div class="stats-kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-icon purple">🎓</div>
+                    <div class="kpi-body">
+                        <div class="kpi-num" id="kpi-total">—</div>
+                        <div class="kpi-label">Total Placed</div>
+                    </div>
+                    <div class="kpi-trend positive">↑ 18%</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon blue">💰</div>
+                    <div class="kpi-body">
+                        <div class="kpi-num" id="kpi-avg-pkg">—</div>
+                        <div class="kpi-label">Avg. Package</div>
+                    </div>
+                    <div class="kpi-trend positive">↑ 12%</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green">🏆</div>
+                    <div class="kpi-body">
+                        <div class="kpi-num" id="kpi-highest">—</div>
+                        <div class="kpi-label">Highest Package</div>
+                    </div>
+                    <div class="kpi-trend positive">↑ 8%</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon orange">🏢</div>
+                    <div class="kpi-body">
+                        <div class="kpi-num" id="kpi-companies">—</div>
+                        <div class="kpi-label">Companies Visited</div>
+                    </div>
+                    <div class="kpi-trend positive">↑ 25%</div>
+                </div>
+            </div>
+            <div class="charts-grid">
+                <div class="chart-card full-width">
+                    <h3>Placements Over Years</h3>
+                    <canvas id="chart-yearly"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Branch-wise Placement %</h3>
+                    <canvas id="chart-branch"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Package Distribution</h3>
+                    <canvas id="chart-package"></canvas>
+                </div>
+            </div>
+            <div class="stats-table-section">
+                <h3>Top Recruiters</h3>
+                <div class="table-wrapper">
+                    <table class="data-table" id="top-recruiters-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Company</th>
+                                <th>Offers</th>
+                                <th>Avg. CTC</th>
+                                <th>Highest CTC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recruiters-tbody">
+                            <tr>
+                                <td colspan="5" class="loading-row">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+     PAGE: DASHBOARD (role-based)
+═══════════════════════════════════════════════════════ -->
+    <div id="page-dashboard" class="page hidden">
+        <div class="section-container">
+            <div class="dashboard-welcome">
+                <h1>Welcome back, <span id="dash-name">User</span>! 👋</h1>
+                <p id="dash-subtitle">Here's your placement overview</p>
+            </div>
+            <div id="dashboard-content"><!-- filled by role --></div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+     PAGE: PROFILE
+═══════════════════════════════════════════════════════ -->
+    <div id="page-profile" class="page hidden">
+        <div class="section-container">
+            <h1 class="page-title">My Profile</h1>
+            <div id="profile-content" class="profile-layout"><!-- filled by JS --></div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+     PAGE: POST JOB (Company)
+═══════════════════════════════════════════════════════ -->
+    <div id="page-post-job" class="page hidden">
+        <div class="section-container">
+            <button class="back-btn" onclick="showPage('dashboard')">← Back to Dashboard</button>
+            <h1 class="page-title">Post a New Job</h1>
+            <form id="post-job-form" class="form-card" onsubmit="handlePostJob(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Job Title *</label>
+                        <input type="text" id="pj-title" placeholder="e.g., Software Engineer" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Job Type *</label>
+                        <select id="pj-type" required>
+                            <option value="">Select type</option>
+                            <option value="Full-time">Full-time</option>
+                            <option value="Internship">Internship</option>
+                            <option value="PPO">PPO</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>CTC / Stipend (LPA) *</label>
+                        <input type="number" id="pj-ctc" step="0.1" min="0" placeholder="e.g., 12.5" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Location *</label>
+                        <input type="text" id="pj-location" placeholder="e.g., Bangalore, Remote" required />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Job Description *</label>
+                    <textarea id="pj-description" rows="5" placeholder="Describe the role, responsibilities..."
+                        required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Required Skills (comma separated)</label>
+                    <input type="text" id="pj-skills" placeholder="Python, ML, Data Structures" />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Minimum CGPA</label>
+                        <input type="number" id="pj-min-cgpa" step="0.1" min="0" max="10" placeholder="e.g., 7.0" />
+                    </div>
+                    <div class="form-group">
+                        <label>Application Deadline *</label>
+                        <input type="date" id="pj-deadline" required />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Eligible Branches (hold Ctrl to multi-select)</label>
+                    <select id="pj-branches" multiple>
+                        <option value="CSE">CSE</option>
+                        <option value="ECE">ECE</option>
+                        <option value="ME">ME</option>
+                        <option value="CE">CE</option>
+                        <option value="EE">EE</option>
+                        <option value="IT">IT</option>
+                        <option value="MBA">MBA</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Interview Process</label>
+                    <textarea id="pj-process" rows="3" placeholder="Aptitude → Technical Round 1 → HR Round"></textarea>
+                </div>
+                <button type="submit" class="btn-primary btn-lg" id="post-job-btn">
+                    <span>Post Job</span>
+                    <div class="btn-loader hidden"></div>
+                </button>
+                <div id="post-job-error" class="form-error hidden"></div>
+                <div id="post-job-success" class="form-success hidden"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+     PAGE: ADMIN PANEL
+═══════════════════════════════════════════════════════ -->
+    <div id="page-admin" class="page hidden">
+        <div class="section-container">
+            <h1 class="page-title">Admin Panel</h1>
+            <div class="admin-tabs">
+                <button class="admin-tab active" onclick="switchAdminTab('users', this)">👥 Users</button>
+                <button class="admin-tab" onclick="switchAdminTab('jobs', this)">💼 Jobs</button>
+                <button class="admin-tab" onclick="switchAdminTab('applications', this)">📨 Applications</button>
+                <button class="admin-tab" onclick="switchAdminTab('notices', this)">📢 Notices</button>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="admin-tab-users" class="admin-tab-content active">
+                <div class="admin-toolbar">
+                    <input type="text" id="admin-user-search" placeholder="Search users..."
+                        oninput="adminSearchUsers()" />
+                    <select id="admin-user-role" onchange="adminSearchUsers()">
+                        <option value="">All Roles</option>
+                        <option value="student">Students</option>
+                        <option value="company">Companies</option>
+                        <option value="admin">Admins</option>
+                    </select>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Branch</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-users-tbody">
+                            <tr>
+                                <td colspan="6" class="loading-row">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Jobs Tab -->
+            <div id="admin-tab-jobs" class="admin-tab-content hidden">
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Company</th>
+                                <th>Type</th>
+                                <th>CTC</th>
+                                <th>Deadline</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-jobs-tbody">
+                            <tr>
+                                <td colspan="7" class="loading-row">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Applications Tab -->
+            <div id="admin-tab-applications" class="admin-tab-content hidden">
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Job</th>
+                                <th>Company</th>
+                                <th>Applied</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-apps-tbody">
+                            <tr>
+                                <td colspan="6" class="loading-row">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Notices Tab -->
+            <div id="admin-tab-notices" class="admin-tab-content hidden">
+                <form id="notice-form" class="form-card compact" onsubmit="handlePostNotice(event)">
+                    <h3>Post a New Notice</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="notice-title" placeholder="Notice title..." required />
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="notice-category" required>
+                                <option value="general">General</option>
+                                <option value="urgent">Urgent</option>
+                                <option value="drive">Drive</option>
+                                <option value="result">Result</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Content</label>
+                        <textarea id="notice-content" rows="4" placeholder="Notice details..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary">Post Notice</button>
+                    <div id="notice-error" class="form-error hidden"></div>
+                    <div id="notice-success" class="form-success hidden"></div>
+                </form>
+                <div class="table-wrapper" style="margin-top:1.5rem">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Posted By</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-notices-tbody">
+                            <tr>
+                                <td colspan="5" class="loading-row">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+     APPLY MODAL
+═══════════════════════════════════════════════════════ -->
+    <div id="apply-overlay" class="hidden">
+        <div id="apply-modal">
+            <button class="modal-close-btn" onclick="closeApplyModal()">✕</button>
+            <h2>Apply for <span id="apply-job-title">Job</span></h2>
+            <p class="apply-company" id="apply-company-name"></p>
+            <form id="apply-form" onsubmit="handleApply(event)">
+                <div class="form-group">
+                    <label>Cover Letter (optional)</label>
+                    <textarea id="apply-cover" rows="5"
+                        placeholder="Tell the recruiter why you're a great fit..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Resume Link</label>
+                    <input type="url" id="apply-resume" placeholder="https://drive.google.com/..." />
+                </div>
+                <button type="submit" class="btn-primary btn-full" id="apply-btn">
+                    <span>Submit Application</span>
+                    <div class="btn-loader hidden"></div>
+                </button>
+                <div id="apply-error" class="form-error hidden"></div>
+            </form>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 

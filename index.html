@@ -13,6 +13,11 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap"
         rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
@@ -24,18 +29,7 @@
     <!-- ═══════════════════════ LOADING SCREEN ═══════════════════════ -->
     <div id="loading-screen">
         <div class="loader-logo">
-            <div class="loader-icon">
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                    <path d="M24 4L44 36H4L24 4Z" fill="url(#lg1)" />
-                    <defs>
-                        <linearGradient id="lg1" x1="4" y1="36" x2="44" y2="4" gradientUnits="userSpaceOnUse">
-                            <stop stop-color="#6366f1" />
-                            <stop offset="1" stop-color="#a855f7" />
-                        </linearGradient>
-                    </defs>
-                </svg>
-            </div>
-            <span>PlaceMe</span>
+            <img src="logo.png" alt="PlaceMe" class="loader-logo-img" />
         </div>
         <div class="loader-bar">
             <div class="loader-fill"></div>
@@ -48,16 +42,7 @@
             <button id="auth-close" class="modal-close-btn" onclick="closeAuth()">✕</button>
             <div class="auth-header">
                 <div class="auth-logo">
-                    <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
-                        <path d="M24 4L44 36H4L24 4Z" fill="url(#lg2)" />
-                        <defs>
-                            <linearGradient id="lg2" x1="4" y1="36" x2="44" y2="4" gradientUnits="userSpaceOnUse">
-                                <stop stop-color="#6366f1" />
-                                <stop offset="1" stop-color="#a855f7" />
-                            </linearGradient>
-                        </defs>
-                    </svg>
-                    PlaceMe
+                    <img src="logo.png" alt="PlaceMe" class="auth-logo-img" />
                 </div>
             </div>
 
@@ -198,16 +183,7 @@
     <nav id="navbar">
         <div class="nav-container">
             <a href="#" class="nav-logo" onclick="showPage('home')">
-                <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
-                    <path d="M24 4L44 36H4L24 4Z" fill="url(#lg3)" />
-                    <defs>
-                        <linearGradient id="lg3" x1="4" y1="36" x2="44" y2="4" gradientUnits="userSpaceOnUse">
-                            <stop stop-color="#6366f1" />
-                            <stop offset="1" stop-color="#a855f7" />
-                        </linearGradient>
-                    </defs>
-                </svg>
-                PlaceMe
+                <img src="logo.png" alt="PlaceMe – Campus Placement Portal" class="nav-logo-img" />
             </a>
 
             <div class="nav-links" id="nav-links">
@@ -443,17 +419,8 @@
         <footer class="footer">
             <div class="footer-container">
                 <div class="footer-brand">
-                    <div class="nav-logo">
-                        <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
-                            <path d="M24 4L44 36H4L24 4Z" fill="url(#lgf)" />
-                            <defs>
-                                <linearGradient id="lgf" x1="4" y1="36" x2="44" y2="4" gradientUnits="userSpaceOnUse">
-                                    <stop stop-color="#6366f1" />
-                                    <stop offset="1" stop-color="#a855f7" />
-                                </linearGradient>
-                            </defs>
-                        </svg>
-                        PlaceMe
+                    <div class="footer-logo">
+                        <img src="logo.png" alt="PlaceMe – Campus Placement Portal" class="footer-logo-img" />
                     </div>
                     <p>Your campus placement partner for a brighter future.</p>
                 </div>
